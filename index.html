@@ -8,6 +8,9 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!-- Firebase Compat SDK (안정적 전역 로딩 방식) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
   <style>
     @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css");
     body { font-family: "Pretendard", sans-serif; }
@@ -24,7 +27,7 @@
         <div class="bg-indigo-600 p-2 rounded-xl font-black text-xl tracking-wider">2026</div>
         <div>
           <h1 class="text-xl font-bold">인재개발 페스타 현장 설문조사</h1>
-          <p id="syncStatus" class="text-xs text-emerald-300 font-semibold">● 실시간 클라우드 DB 동기화 대기중...</p>
+          <p id="syncStatus" class="text-xs text-emerald-300 font-semibold">● 실시간 클라우드 DB 연결 중...</p>
         </div>
       </div>
       <div class="flex items-center gap-3">
@@ -59,7 +62,7 @@
         <div class="bg-slate-50 p-4 rounded-xl mb-6 border border-slate-200">
           <label class="block text-xs font-bold text-slate-700 mb-1">본인 사원번호 입력 <span class="text-red-500">*필수</span></label>
           <div class="flex gap-2">
-            <input type="text" id="empInput" placeholder="사번 입력 (예: 2180035)" class="flex-1 px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono">
+            <input type="text" id="empInput" onkeydown="if(event.key==='Enter') verifyEmp()" placeholder="사번 입력 (예: 2180036)" class="flex-1 px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono">
             <button onclick="verifyEmp()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs px-4 py-2 rounded-lg font-semibold transition">인증</button>
           </div>
           <p id="empStatus" class="text-xs mt-2 font-medium text-slate-500">사원번호를 입력하고 인증 버튼을 눌러주세요.</p>
@@ -178,36 +181,28 @@
       <h3 class="text-lg font-bold text-slate-900 mb-1">모바일 설문 참여 QR</h3>
       <p class="text-xs text-slate-500 mb-4">카메라 앱으로 스캔하면 스마트폰으로 접속됩니다.</p>
       <div id="qrcode" class="flex justify-center p-4 bg-slate-50 rounded-xl border border-slate-100"></div>
+      <p class="text-[11px] text-slate-400 mt-3 break-all" id="qrUrlText"></p>
       <button onclick="closeQRModal()" class="mt-4 w-full bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold py-2.5 rounded-xl">닫기</button>
     </div>
   </div>
 
-  <!-- Firebase SDK (실시간 데이터베이스 연동) -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, set, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-
-    // =========================================================================
-    // [중요] 1단계에서 복사한 본인의 Firebase Realtime Database URL을 아래에 붙여넣으세요!
-    // 예시: "https://festa-2026-default-rtdb.firebaseio.com"
+  <script>
+    // 본인의 Firebase Realtime Database 주소 설정 완료
     const FIREBASE_DB_URL = "https://fest-ac94a-default-rtdb.firebaseio.com";
-    // =========================================================================
 
     let db = null;
     let isFirebaseReady = false;
 
-    if (FIREBASE_DB_URL && FIREBASE_DB_URL.startsWith("http")) {
-      try {
-        const app = initializeApp({ databaseURL: FIREBASE_DB_URL });
-        db = getDatabase(app);
+    try {
+      if (typeof firebase !== "undefined" && FIREBASE_DB_URL.startsWith("http")) {
+        firebase.initializeApp({ databaseURL: FIREBASE_DB_URL });
+        db = firebase.database();
         isFirebaseReady = true;
         document.getElementById("syncStatus").innerText = "● 클라우드 실시간 DB 연결 완료 (모든 기기 통합 집계중)";
-      } catch (e) {
-        console.error("Firebase 연결 오류:", e);
-        document.getElementById("syncStatus").innerText = "⚠️ DB 연결 오류 (URL을 확인해주세요)";
       }
-    } else {
-      document.getElementById("syncStatus").innerText = "⚠️ 로컬 모드 (Firebase URL 미입력 - 현재 기기만 저장됨)";
+    } catch (e) {
+      console.error("Firebase 연결 오류:", e);
+      document.getElementById("syncStatus").innerText = "⚠️ DB 연결 오류 (로컬 모드로 작동중)";
       document.getElementById("syncStatus").className = "text-xs text-amber-300 font-semibold";
     }
 
@@ -219,7 +214,7 @@
     let selectedAnswers = { q1: null, q2: null, q3: null };
 
     const defaultPollData = {
-      votedEmps: {}, // { "2180035": true } 형태 (Firebase 배열 충돌 방지)
+      votedEmps: {},
       votes: {
         q1: { "매우 만족": 0, "만족": 0, "보통": 0, "아쉬움": 0 },
         q2: { "AI & 미래기술": 0, "조직문화 & 리더십": 0, "직무 역량 강화": 0 },
@@ -250,17 +245,15 @@
     }
     initDB(empDB);
 
-    // Firebase 실시간 리스너 연결 (다른 기기에서 투표 시 즉시 반영)
     if (isFirebaseReady) {
-      const pollRef = ref(db, 'festa2026_poll');
-      onValue(pollRef, (snapshot) => {
+      db.ref('festa2026_poll').on('value', (snapshot) => {
         const data = snapshot.val();
         if (data) {
           pollData.votedEmps = data.votedEmps || {};
           pollData.votes = {
-            q1: { ...defaultPollData.votes.q1, ...(data.votes?.q1 || {}) },
-            q2: { ...defaultPollData.votes.q2, ...(data.votes?.q2 || {}) },
-            q3: { ...defaultPollData.votes.q3, ...(data.votes?.q3 || {}) }
+            q1: Object.assign({}, defaultPollData.votes.q1, (data.votes && data.votes.q1) ? data.votes.q1 : {}),
+            q2: Object.assign({}, defaultPollData.votes.q2, (data.votes && data.votes.q2) ? data.votes.q2 : {}),
+            q3: Object.assign({}, defaultPollData.votes.q3, (data.votes && data.votes.q3) ? data.votes.q3 : {})
           };
           pollData.deptVotes = data.deptVotes || {};
           updateDashboard();
@@ -268,7 +261,7 @@
       });
     }
 
-    window.verifyEmp = function() {
+    function verifyEmp() {
       const rawInput = document.getElementById("empInput").value;
       const cleanId = String(rawInput).replace(/[^0-9]/g, "").trim();
       const statusEl = document.getElementById("empStatus");
@@ -302,9 +295,9 @@
         currentVerifiedEmp = null;
       }
       checkSubmitEnable();
-    };
+    }
 
-    window.selectOption = function(q, val) {
+    function selectOption(q, val) {
       selectedAnswers[q] = val;
       document.querySelectorAll(`.${q}-btn`).forEach(btn => {
         if (btn.innerText.includes(val)) {
@@ -314,33 +307,35 @@
         }
       });
       checkSubmitEnable();
-    };
+    }
 
     function checkSubmitEnable() {
       const btn = document.getElementById("submitBtn");
       btn.disabled = !(currentVerifiedEmp && selectedAnswers.q1 && selectedAnswers.q2 && selectedAnswers.q3);
     }
 
-    window.submitSurvey = function() {
+    function submitSurvey() {
       if (!currentVerifiedEmp) return;
       const empId = currentVerifiedEmp;
       const dept = empDB[empId] || "기타/현장참가";
-      const ans = { ...selectedAnswers };
+      const ans = { q1: selectedAnswers.q1, q2: selectedAnswers.q2, q3: selectedAnswers.q3 };
 
       if (isFirebaseReady) {
-        // 클라우드 DB 트랜잭션 처리 (동시 투표 시 숫자 누락 방지)
-        const pollRef = ref(db, 'festa2026_poll');
-        runTransaction(pollRef, (currentData) => {
+        db.ref('festa2026_poll').transaction((currentData) => {
           if (!currentData) {
             currentData = JSON.parse(JSON.stringify(defaultPollData));
           }
           if (!currentData.votedEmps) currentData.votedEmps = {};
           if (currentData.votedEmps[empId]) {
-            return; // 이미 투표된 경우 중단
+            return;
           }
           currentData.votedEmps[empId] = true;
 
           if (!currentData.votes) currentData.votes = JSON.parse(JSON.stringify(defaultPollData.votes));
+          if (!currentData.votes.q1) currentData.votes.q1 = {};
+          if (!currentData.votes.q2) currentData.votes.q2 = {};
+          if (!currentData.votes.q3) currentData.votes.q3 = {};
+
           currentData.votes.q1[ans.q1] = (currentData.votes.q1[ans.q1] || 0) + 1;
           currentData.votes.q2[ans.q2] = (currentData.votes.q2[ans.q2] || 0) + 1;
           currentData.votes.q3[ans.q3] = (currentData.votes.q3[ans.q3] || 0) + 1;
@@ -349,20 +344,19 @@
           currentData.deptVotes[dept] = (currentData.deptVotes[dept] || 0) + 1;
 
           return currentData;
-        }).then((result) => {
-          if (result.committed) {
+        }, (error, committed) => {
+          if (error) {
+            alert("제출 중 네트워크 오류가 발생했습니다. 다시 시도해 주세요.");
+            console.error(error);
+          } else if (committed) {
             alert("설문 제출이 완료되었습니다. 감사합니다!");
             resetForm();
           } else {
             alert("⚠️ 이미 참여가 완료된 사원번호입니다.");
             resetForm();
           }
-        }).catch((err) => {
-          alert("제출 중 네트워크 오류가 발생했습니다. 다시 시도해 주세요.");
-          console.error(err);
         });
       } else {
-        // 로컬 모드 저장
         pollData.votedEmps[empId] = true;
         pollData.votes.q1[ans.q1]++;
         pollData.votes.q2[ans.q2]++;
@@ -373,7 +367,7 @@
         resetForm();
         updateDashboard();
       }
-    };
+    }
 
     function resetForm() {
       document.getElementById("empInput").value = "";
@@ -424,10 +418,10 @@
         options: { animation: false, responsive: true, maintainAspectRatio: false }
       });
 
-      window.renderDeptTable();
+      renderDeptTable();
     }
 
-    window.renderDeptTable = function() {
+    function renderDeptTable() {
       const filter = document.getElementById("deptSearch").value.toLowerCase();
       const tbody = document.getElementById("deptTableBody");
       tbody.innerHTML = "";
@@ -442,9 +436,9 @@
           tbody.appendChild(tr);
         }
       });
-    };
+    }
 
-    window.switchTab = function(tab) {
+    function switchTab(tab) {
       if (tab === "results") {
         document.getElementById("tabResults").classList.remove("hidden");
         document.getElementById("tabDept").classList.add("hidden");
@@ -456,7 +450,7 @@
         document.getElementById("tab2Btn").className = "text-xs font-bold px-3 py-1.5 rounded-lg bg-white shadow-sm text-indigo-900 transition";
         document.getElementById("tab1Btn").className = "text-xs font-bold px-3 py-1.5 rounded-lg text-slate-500 hover:text-slate-900 transition";
       }
-    };
+    }
 
     document.getElementById("excelUpload").addEventListener("change", function(e) {
       const file = e.target.files[0];
@@ -485,7 +479,7 @@
       reader.readAsArrayBuffer(file);
     });
 
-    window.exportCSV = function() {
+    function exportCSV() {
       let csvStr = "\uFEFF부서명,정원,투표자수,참여율(%)\n";
       Object.keys(deptTotals).forEach(dept => {
         const total = deptTotals[dept];
@@ -499,16 +493,17 @@
       a.href = url;
       a.download = "2026_인재개발페스타_설문결과.csv";
       a.click();
-    };
+    }
 
-    window.openQRModal = function() {
+    function openQRModal() {
       document.getElementById("qrModal").classList.remove("hidden");
       document.getElementById("qrcode").innerHTML = "";
+      document.getElementById("qrUrlText").innerText = window.location.href;
       new QRCode(document.getElementById("qrcode"), { text: window.location.href, width: 160, height: 160 });
-    };
-    window.closeQRModal = function() {
+    }
+    function closeQRModal() {
       document.getElementById("qrModal").classList.add("hidden");
-    };
+    }
   </script>
 </body>
 </html>
