@@ -8,7 +8,6 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <!-- Firebase Compat SDK (안정적 전역 로딩 방식) -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
   <style>
@@ -187,7 +186,6 @@
   </div>
 
   <script>
-    // 본인의 Firebase Realtime Database 주소 설정 완료
     const FIREBASE_DB_URL = "https://fest-ac94a-default-rtdb.firebaseio.com";
 
     let db = null;
@@ -198,12 +196,9 @@
         firebase.initializeApp({ databaseURL: FIREBASE_DB_URL });
         db = firebase.database();
         isFirebaseReady = true;
-        document.getElementById("syncStatus").innerText = "● 클라우드 실시간 DB 연결 완료 (모든 기기 통합 집계중)";
       }
     } catch (e) {
-      console.error("Firebase 연결 오류:", e);
-      document.getElementById("syncStatus").innerText = "⚠️ DB 연결 오류 (로컬 모드로 작동중)";
-      document.getElementById("syncStatus").className = "text-xs text-amber-300 font-semibold";
+      console.error("Firebase 초기화 오류:", e);
     }
 
     // 1,233명 내장 사원 DB
@@ -213,22 +208,17 @@
     let currentVerifiedEmp = null;
     let selectedAnswers = { q1: null, q2: null, q3: null };
 
-    const defaultPollData = {
-      votedEmps: {},
-      votes: {
-        q1: { "매우 만족": 0, "만족": 0, "보통": 0, "아쉬움": 0 },
-        q2: { "AI & 미래기술": 0, "조직문화 & 리더십": 0, "직무 역량 강화": 0 },
-        q3: { "적극 참여": 0, "검토 후 결정": 0 }
-      },
-      deptVotes: {}
+    const defaultVotes = {
+      q1: { "매우 만족": 0, "만족": 0, "보통": 0, "아쉬움": 0 },
+      q2: { "AI & 미래기술": 0, "조직문화 & 리더십": 0, "직무 역량 강화": 0 },
+      q3: { "적극 참여": 0, "검토 후 결정": 0 }
     };
 
-    let pollData = JSON.parse(localStorage.getItem("festa_poll_data")) || JSON.parse(JSON.stringify(defaultPollData));
-    if (Array.isArray(pollData.votedEmps)) {
-      const obj = {};
-      pollData.votedEmps.forEach(id => obj[id] = true);
-      pollData.votedEmps = obj;
-    }
+    let pollData = {
+      votedEmps: {},
+      votes: JSON.parse(JSON.stringify(defaultVotes)),
+      deptVotes: {}
+    };
 
     function initDB(data) {
       empDB = {}; deptTotals = {};
@@ -245,19 +235,49 @@
     }
     initDB(empDB);
 
+    // Firebase 실시간 수신 (개별 투표 레코드 방식 - 충돌 원천 차단)
     if (isFirebaseReady) {
-      db.ref('festa2026_poll').on('value', (snapshot) => {
-        const data = snapshot.val();
-        if (data) {
-          pollData.votedEmps = data.votedEmps || {};
-          pollData.votes = {
-            q1: Object.assign({}, defaultPollData.votes.q1, (data.votes && data.votes.q1) ? data.votes.q1 : {}),
-            q2: Object.assign({}, defaultPollData.votes.q2, (data.votes && data.votes.q2) ? data.votes.q2 : {}),
-            q3: Object.assign({}, defaultPollData.votes.q3, (data.votes && data.votes.q3) ? data.votes.q3 : {})
-          };
-          pollData.deptVotes = data.deptVotes || {};
-          updateDashboard();
+      const recordsRef = db.ref('festa2026_records');
+      
+      // 연결 상태 감지
+      db.ref('.info/connected').on('value', (snap) => {
+        const statusEl = document.getElementById("syncStatus");
+        if (snap.val() === true) {
+          statusEl.innerText = "● 클라우드 실시간 DB 연결 완료 (모든 기기 통합 집계중)";
+          statusEl.className = "text-xs text-emerald-300 font-semibold";
+        } else {
+          statusEl.innerText = "● 클라우드 DB 연결 시도 중...";
+          statusEl.className = "text-xs text-amber-300 font-semibold";
         }
+      });
+
+      // 전체 투표 내역 실시간 합산
+      recordsRef.on('value', (snapshot) => {
+        const records = snapshot.val() || {};
+        const newVotedEmps = {};
+        const newVotes = JSON.parse(JSON.stringify(defaultVotes));
+        const newDeptVotes = {};
+
+        Object.keys(records).forEach(empId => {
+          const r = records[empId];
+          if (r && r.q1 && r.q2 && r.q3) {
+            newVotedEmps[empId] = true;
+            if (newVotes.q1[r.q1] !== undefined) newVotes.q1[r.q1]++;
+            if (newVotes.q2[r.q2] !== undefined) newVotes.q2[r.q2]++;
+            if (newVotes.q3[r.q3] !== undefined) newVotes.q3[r.q3]++;
+            const dept = r.dept || empDB[empId] || "기타";
+            newDeptVotes[dept] = (newDeptVotes[dept] || 0) + 1;
+          }
+        });
+
+        pollData.votedEmps = newVotedEmps;
+        pollData.votes = newVotes;
+        pollData.deptVotes = newDeptVotes;
+        updateDashboard();
+      }, (error) => {
+        console.error("DB 읽기 권한 오류:", error);
+        document.getElementById("syncStatus").innerText = "⚠️ Firebase 보안 규칙(Rules) 읽기 권한을 true로 설정해주세요!";
+        document.getElementById("syncStatus").className = "text-xs text-red-300 font-bold";
       });
     }
 
@@ -318,54 +338,38 @@
       if (!currentVerifiedEmp) return;
       const empId = currentVerifiedEmp;
       const dept = empDB[empId] || "기타/현장참가";
-      const ans = { q1: selectedAnswers.q1, q2: selectedAnswers.q2, q3: selectedAnswers.q3 };
+      const submitBtn = document.getElementById("submitBtn");
+      submitBtn.disabled = true;
+      submitBtn.innerText = "제출 중...";
 
       if (isFirebaseReady) {
-        db.ref('festa2026_poll').transaction((currentData) => {
-          if (!currentData) {
-            currentData = JSON.parse(JSON.stringify(defaultPollData));
-          }
-          if (!currentData.votedEmps) currentData.votedEmps = {};
-          if (currentData.votedEmps[empId]) {
-            return;
-          }
-          currentData.votedEmps[empId] = true;
-
-          if (!currentData.votes) currentData.votes = JSON.parse(JSON.stringify(defaultPollData.votes));
-          if (!currentData.votes.q1) currentData.votes.q1 = {};
-          if (!currentData.votes.q2) currentData.votes.q2 = {};
-          if (!currentData.votes.q3) currentData.votes.q3 = {};
-
-          currentData.votes.q1[ans.q1] = (currentData.votes.q1[ans.q1] || 0) + 1;
-          currentData.votes.q2[ans.q2] = (currentData.votes.q2[ans.q2] || 0) + 1;
-          currentData.votes.q3[ans.q3] = (currentData.votes.q3[ans.q3] || 0) + 1;
-
-          if (!currentData.deptVotes) currentData.deptVotes = {};
-          currentData.deptVotes[dept] = (currentData.deptVotes[dept] || 0) + 1;
-
-          return currentData;
-        }, (error, committed) => {
-          if (error) {
-            alert("제출 중 네트워크 오류가 발생했습니다. 다시 시도해 주세요.");
-            console.error(error);
-          } else if (committed) {
-            alert("설문 제출이 완료되었습니다. 감사합니다!");
-            resetForm();
-          } else {
+        const recordRef = db.ref('festa2026_records/' + empId);
+        recordRef.once('value').then((snap) => {
+          if (snap.exists()) {
             alert("⚠️ 이미 참여가 완료된 사원번호입니다.");
             resetForm();
+            return;
           }
+          return recordRef.set({
+            dept: dept,
+            q1: selectedAnswers.q1,
+            q2: selectedAnswers.q2,
+            q3: selectedAnswers.q3,
+            timestamp: Date.now()
+          }).then(() => {
+            alert("✅ 설문 제출이 완료되었습니다. 감사합니다!");
+            resetForm();
+          });
+        }).catch((err) => {
+          alert("❌ 저장 실패: Firebase 콘솔의 [Realtime Database > 규칙]에서 .read와 .write를 true로 설정했는지 확인해주세요.");
+          console.error(err);
+          submitBtn.disabled = false;
+          submitBtn.innerText = "설문 최종 제출하기";
         });
       } else {
-        pollData.votedEmps[empId] = true;
-        pollData.votes.q1[ans.q1]++;
-        pollData.votes.q2[ans.q2]++;
-        pollData.votes.q3[ans.q3]++;
-        pollData.deptVotes[dept] = (pollData.deptVotes[dept] || 0) + 1;
-        localStorage.setItem("festa_poll_data", JSON.stringify(pollData));
-        alert("설문 제출이 완료되었습니다. 감사합니다!");
-        resetForm();
-        updateDashboard();
+        alert("DB 연결이 되어있지 않습니다.");
+        submitBtn.disabled = false;
+        submitBtn.innerText = "설문 최종 제출하기";
       }
     }
 
@@ -374,6 +378,7 @@
       document.getElementById("empStatus").className = "text-xs mt-2 font-medium text-slate-500";
       document.getElementById("empStatus").innerText = "사원번호를 입력하고 인증 버튼을 눌러주세요.";
       document.getElementById("surveyForm").classList.add("opacity-50", "pointer-events-none");
+      document.getElementById("submitBtn").innerText = "설문 최종 제출하기";
       selectedAnswers = { q1: null, q2: null, q3: null };
       currentVerifiedEmp = null;
       document.querySelectorAll(".q1-btn, .q2-btn, .q3-btn").forEach(btn => {
