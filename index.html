@@ -16,6 +16,23 @@
     body { font-family: "Pretendard", sans-serif; }
     .custom-scrollbar::-webkit-scrollbar { width: 6px; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .option-btn {
+      border: 1.5px solid #e2e8f0;
+      background-color: #ffffff;
+      color: #334155;
+      transition: all 0.15s ease;
+    }
+    .option-btn:hover {
+      border-color: #6366f1;
+      background-color: #eef2ff;
+    }
+    .option-btn.selected {
+      border: 2px solid #4f46e5 !important;
+      background-color: #eef2ff !important;
+      color: #1e1b4b !important;
+      font-weight: 700;
+      box-shadow: 0 2px 6px rgba(79, 70, 229, 0.15);
+    }
   </style>
 </head>
 <body class="bg-slate-100 min-h-screen text-slate-800 flex flex-col">
@@ -74,10 +91,10 @@
           <div>
             <p class="text-sm font-bold text-slate-800 mb-2">Q1. 오늘 행사의 전반적인 만족도는 어떠신가요?</p>
             <div class="grid grid-cols-2 gap-2">
-              <button onclick="selectOption('q1', '매우 만족')" class="q1-btn p-3 text-xs font-semibold rounded-xl border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/50 text-slate-700 transition">😄 매우 만족</button>
-              <button onclick="selectOption('q1', '만족')" class="q1-btn p-3 text-xs font-semibold rounded-xl border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/50 text-slate-700 transition">🙂 만족</button>
-              <button onclick="selectOption('q1', '보통')" class="q1-btn p-3 text-xs font-semibold rounded-xl border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/50 text-slate-700 transition">😐 보통</button>
-              <button onclick="selectOption('q1', '아쉬움')" class="q1-btn p-3 text-xs font-semibold rounded-xl border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/50 text-slate-700 transition">🙁 아쉬움</button>
+              <button type="button" data-q="q1" data-val="매우 만족" onclick="selectOption('q1', '매우 만족')" class="option-btn p-3 text-xs font-semibold rounded-xl">😄 매우 만족</button>
+              <button type="button" data-q="q1" data-val="만족" onclick="selectOption('q1', '만족')" class="option-btn p-3 text-xs font-semibold rounded-xl">🙂 만족</button>
+              <button type="button" data-q="q1" data-val="보통" onclick="selectOption('q1', '보통')" class="option-btn p-3 text-xs font-semibold rounded-xl">😐 보통</button>
+              <button type="button" data-q="q1" data-val="아쉬움" onclick="selectOption('q1', '아쉬움')" class="option-btn p-3 text-xs font-semibold rounded-xl">🙁 아쉬움</button>
             </div>
           </div>
 
@@ -85,9 +102,9 @@
           <div>
             <p class="text-sm font-bold text-slate-800 mb-2">Q2. 가장 유익했던 세션 분야는 무엇인가요?</p>
             <div class="space-y-2">
-              <button onclick="selectOption('q2', 'AI & 미래기술')" class="q2-btn w-full text-left p-3 text-xs font-semibold rounded-xl border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/50 text-slate-700 transition">🤖 AI & 미래기술 혁신</button>
-              <button onclick="selectOption('q2', '조직문화 & 리더십')" class="q2-btn w-full text-left p-3 text-xs font-semibold rounded-xl border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/50 text-slate-700 transition">🤝 조직문화 및 소통 리더십</button>
-              <button onclick="selectOption('q2', '직무 역량 강화')" class="q2-btn w-full text-left p-3 text-xs font-semibold rounded-xl border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/50 text-slate-700 transition">📈 실무 직무 역량 개발</button>
+              <button type="button" data-q="q2" data-val="AI & 미래기술" onclick="selectOption('q2', 'AI & 미래기술')" class="option-btn w-full text-left p-3 text-xs font-semibold rounded-xl">🤖 AI & 미래기술 혁신</button>
+              <button type="button" data-q="q2" data-val="조직문화 & 리더십" onclick="selectOption('q2', '조직문화 & 리더십')" class="option-btn w-full text-left p-3 text-xs font-semibold rounded-xl">🤝 조직문화 및 소통 리더십</button>
+              <button type="button" data-q="q2" data-val="직무 역량 강화" onclick="selectOption('q2', '직무 역량 강화')" class="option-btn w-full text-left p-3 text-xs font-semibold rounded-xl">📈 실무 직무 역량 개발</button>
             </div>
           </div>
 
@@ -95,8 +112,8 @@
           <div>
             <p class="text-sm font-bold text-slate-800 mb-2">Q3. 향후 재참여 의향이 있으신가요?</p>
             <div class="grid grid-cols-2 gap-2">
-              <button onclick="selectOption('q3', '적극 참여')" class="q3-btn p-3 text-xs font-semibold rounded-xl border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/50 text-slate-700 transition">👍 적극 참여</button>
-              <button onclick="selectOption('q3', '검토 후 결정')" class="q3-btn p-3 text-xs font-semibold rounded-xl border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/50 text-slate-700 transition">🤔 상황 봐서 결정</button>
+              <button type="button" data-q="q3" data-val="적극 참여" onclick="selectOption('q3', '적극 참여')" class="option-btn p-3 text-xs font-semibold rounded-xl">👍 적극 참여</button>
+              <button type="button" data-q="q3" data-val="검토 후 결정" onclick="selectOption('q3', '검토 후 결정')" class="option-btn p-3 text-xs font-semibold rounded-xl">🤔 상황 봐서 결정</button>
             </div>
           </div>
         </div>
@@ -139,15 +156,19 @@
         </div>
       </div>
 
-      <!-- 탭 1: 문항별 결과 -->
+      <!-- 탭 1: 문항별 결과 (Q1, Q2, Q3 모두 표시) -->
       <div id="tabResults" class="space-y-6 flex-1 overflow-y-auto custom-scrollbar pr-1">
         <div>
           <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Q1. 전반적 만족도 현황</h3>
-          <div class="h-44"><canvas id="chartQ1"></canvas></div>
+          <div class="h-40"><canvas id="chartQ1"></canvas></div>
         </div>
         <div>
           <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Q2. 유익한 세션 현황</h3>
-          <div class="h-44"><canvas id="chartQ2"></canvas></div>
+          <div class="h-40"><canvas id="chartQ2"></canvas></div>
+        </div>
+        <div>
+          <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Q3. 향후 재참여 의향 현황</h3>
+          <div class="h-36"><canvas id="chartQ3"></canvas></div>
         </div>
       </div>
 
@@ -187,12 +208,13 @@
   </div>
 
   <script>
-    var APP_VERSION = "v5";
+    var APP_VERSION = "v6";
     var FIREBASE_DB_URL = "https://fest-ac94a-default-rtdb.firebaseio.com";
     var RECORDS_ENDPOINT = FIREBASE_DB_URL + "/festa2026_records.json";
 
     var chart1 = null;
     var chart2 = null;
+    var chart3 = null;
     var deptTotals = {};
     var currentVerifiedEmp = null;
     var selectedAnswers = { q1: null, q2: null, q3: null };
@@ -231,6 +253,8 @@
       if (typeof Chart === "undefined") return;
       var canvas1 = document.getElementById("chartQ1");
       var canvas2 = document.getElementById("chartQ2");
+      var canvas3 = document.getElementById("chartQ3");
+
       if (canvas1 && !chart1) {
         chart1 = new Chart(canvas1.getContext("2d"), {
           type: "bar",
@@ -251,6 +275,7 @@
           }
         });
       }
+
       if (canvas2 && !chart2) {
         chart2 = new Chart(canvas2.getContext("2d"), {
           type: "doughnut",
@@ -265,6 +290,28 @@
             animation: false,
             responsive: true,
             maintainAspectRatio: false
+          }
+        });
+      }
+
+      if (canvas3 && !chart3) {
+        chart3 = new Chart(canvas3.getContext("2d"), {
+          type: "bar",
+          data: {
+            labels: Object.keys(defaultVotes.q3),
+            datasets: [{
+              data: [0, 0],
+              backgroundColor: ["#10b981", "#f59e0b"],
+              borderRadius: 6
+            }]
+          },
+          options: {
+            indexAxis: "y",
+            animation: false,
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } }
           }
         });
       }
@@ -286,11 +333,14 @@
         chart2.data.datasets[0].data = Object.values(pollData.votes.q2);
         chart2.update("none");
       }
+      if (chart3) {
+        chart3.data.datasets[0].data = Object.values(pollData.votes.q3);
+        chart3.update("none");
+      }
 
       renderDeptTable();
     }
 
-    // REST API 기반 실시간 데이터 동기화
     async function syncFromCloud() {
       var statusEl = document.getElementById("syncStatus");
       try {
@@ -372,13 +422,15 @@
       checkSubmitEnable();
     }
 
+    // data-q 및 data-val 기반 정확한 선택 상태 유지
     function selectOption(q, val) {
       selectedAnswers[q] = val;
-      document.querySelectorAll("." + q + "-btn").forEach(function(btn) {
-        if (btn.innerText.includes(val)) {
-          btn.className = q + "-btn p-3 text-xs font-semibold rounded-xl border-2 border-indigo-600 bg-indigo-50 text-indigo-900 transition";
+      var buttons = document.querySelectorAll('.option-btn[data-q="' + q + '"]');
+      buttons.forEach(function(btn) {
+        if (btn.getAttribute("data-val") === val) {
+          btn.classList.add("selected");
         } else {
-          btn.className = q + "-btn p-3 text-xs font-semibold rounded-xl border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/50 text-slate-700 transition";
+          btn.classList.remove("selected");
         }
       });
       checkSubmitEnable();
@@ -443,8 +495,8 @@
       document.getElementById("submitBtn").innerText = "설문 최종 제출하기";
       selectedAnswers = { q1: null, q2: null, q3: null };
       currentVerifiedEmp = null;
-      document.querySelectorAll(".q1-btn, .q2-btn, .q3-btn").forEach(function(btn) {
-        btn.className = btn.className.replace("border-2 border-indigo-600 bg-indigo-50 text-indigo-900", "border border-slate-200 text-slate-700");
+      document.querySelectorAll(".option-btn").forEach(function(btn) {
+        btn.classList.remove("selected");
       });
       checkSubmitEnable();
     }
@@ -534,7 +586,6 @@
       document.getElementById("qrModal").classList.add("hidden");
     }
 
-    // 페이지 로드 완료 후 순차 초기화
     initDB(empDB);
     syncFromCloud();
     setInterval(syncFromCloud, 2500);
